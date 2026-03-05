@@ -2,7 +2,7 @@
 ## This file is part of the libsigrokdecode project.
 ##
 ## Copyright (C) 2012-2013 Uwe Hermann <uwe@hermann-uwe.de>
-## Copyright (C) 2019 Stephan Thiele <stephan.thiele@mailbox.org>
+## Copyright (C) 2019-2026 Stephan Thiele <stephan.thiele@mailbox.org>
 ##
 ## This program is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
