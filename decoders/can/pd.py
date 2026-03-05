@@ -97,9 +97,9 @@ class Decoder(srd.Decoder):
 
         if self.fd:
             if dlc2len(self.dlc) < 16:
-                self.crc_len = 27 # 17 + SBC + stuff bits
+                self.crc_len = 21 # 17 + SBC bits
             else:
-                self.crc_len = 32 # 21 + SBC + stuff bits
+                self.crc_len = 25 # 21 + SBC bits
         else:
             self.crc_len = 15
 
@@ -148,6 +148,8 @@ class Decoder(srd.Decoder):
         self.rtr_type = None
         self.fd = False
         self.rtr = None
+        self.last_bit_was_stuff_bit = False
+        self.crc_len = 15
 
     # Poor man's clock synchronization. Use signal edges which change to
     # dominant state in rather simple ways. This naive approach is neither
@@ -166,17 +168,44 @@ class Decoder(srd.Decoder):
         return int(samplenum)
 
     def is_stuff_bit(self):
-        # CAN uses NRZ encoding and bit stuffing.
-        # After 5 identical bits, a stuff bit of opposite value is added.
-        # But not in the CRC delimiter, ACK, and end of frame fields.
-        if len(self.bits) > self.last_databit + 17:
+        # CAN uses NRZ encoding (dynamic bit stuffing).
+        # After five consecutive bits of identical value, a stuff bit of the
+        # opposite polarity is inserted.
+        #
+        # In CAN-FD frames, additional fixed bit stuffing is used for the CRC field.
+        # This fixed stuffing begins one bit before the CRC field, regardless of
+        # whether five identical bits have occurred.
+
+        # If a dynamic stuff bit and a fixed stuff bit would be inserted at the
+        # same position, only the fixed stuff bit is inserted. In this case,
+        # only a single stuff bit is inserted:
+        if self.last_bit_was_stuff_bit:
+            self.last_bit_was_stuff_bit = False
             return False
-        last_6_bits = self.rawbits[-6:]
-        if last_6_bits not in ([0, 0, 0, 0, 0, 1], [1, 1, 1, 1, 1, 0]):
+
+        cur_bit = len(self.bits) - 1
+
+        # Bit stuffing is not applied to the CRC delimiter, ACK field,
+        # or End-of-Frame (EOF) field:
+        if cur_bit > self.last_databit + self.crc_len:
+            self.last_bit_was_stuff_bit = False
             return False
+
+        if self.fd and cur_bit > self.last_databit:
+            # Within the CAN-FD CRC field, a fixed stuff bit is inserted after every fourth bit:
+            if (cur_bit - self.last_databit - 1) % 4 != 0:
+                self.last_bit_was_stuff_bit = False
+                return False
+        else:
+            # NRZ dynamic bit stuffing:
+            last_6_bits = self.rawbits[-6:]
+            if last_6_bits not in ([0, 0, 0, 0, 0, 1], [1, 1, 1, 1, 1, 0]):
+                self.last_bit_was_stuff_bit = False
+                return False
 
         # Stuff bit. Keep it in self.rawbits, but drop it from self.bits.
         self.bits.pop() # Drop last bit.
+        self.last_bit_was_stuff_bit = True
         return True
 
     def is_valid_crc(self, crc_bits):
