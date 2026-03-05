@@ -64,10 +64,11 @@ class Decoder(srd.Decoder):
         ('stuff-bit', 'Stuff bit'),
         ('warning', 'Warning'),
         ('bit', 'Bit'),
+        ('sbc', 'Stuff bit count')
     )
     annotation_rows = (
         ('bits', 'Bits', (15, 17)),
-        ('fields', 'Fields', tuple(range(15))),
+        ('fields', 'Fields', tuple(range(15)) + (18,)),
         ('warnings', 'Warnings', (16,)),
     )
 
@@ -97,9 +98,9 @@ class Decoder(srd.Decoder):
 
         if self.fd:
             if dlc2len(self.dlc) < 16:
-                self.crc_len = 21 # 17 + SBC bits
+                self.crc_len = 17
             else:
-                self.crc_len = 25 # 21 + SBC bits
+                self.crc_len = 21
         else:
             self.crc_len = 15
 
@@ -188,7 +189,7 @@ class Decoder(srd.Decoder):
 
         # Bit stuffing is not applied to the CRC delimiter, ACK field,
         # or End-of-Frame (EOF) field:
-        if cur_bit > self.last_databit + self.crc_len:
+        if cur_bit > self.crc_start + self.crc_len - 1:
             self.last_bit_was_stuff_bit = False
             return False
 
@@ -223,22 +224,28 @@ class Decoder(srd.Decoder):
     # Returns True if the frame ended (EOF), False otherwise.
     def decode_frame_end(self, can_rx, bitnum):
 
-        # Remember start of CRC sequence (see below).
+        # Remember start of Non-FD CRC sequence or FD-SBC field (see below).
         if bitnum == (self.last_databit + 1):
+            self.ss_block = self.samplenum
+        elif self.fd and bitnum == (self.last_databit + 4):
+            # SBC field
+            x = self.last_databit + 1
+            sbc_bits = self.bits[x:x + self.last_databit + 4]
+            sbc = bitpack_msb(sbc_bits)
+
+            self.putb([18, ['Raw stuff bit count: %d' % sbc,
+                            'rSBC: %d' % sbc, 'SBC']])
+
+        # Remember start of FD-CRC sequence (see below).
+        elif self.fd and bitnum == (self.last_databit + 4 + 1):
             self.ss_block = self.samplenum
 
         # CRC sequence (15 bits, 17 bits or 21 bits)
-        elif bitnum == (self.last_databit + self.crc_len):
-            if self.fd:
-                if dlc2len(self.dlc) < 16:
-                    crc_type = "CRC-17"
-                else:
-                    crc_type = "CRC-21"
-            else:
-                crc_type = "CRC-15"
-
-            x = self.last_databit + 1
+        elif bitnum == (self.crc_start - 1 + self.crc_len):
+            x = self.crc_start
             crc_bits = self.bits[x:x + self.crc_len + 1]
+
+            crc_type = "CRC-%d" % self.crc_len
             self.crc = bitpack_msb(crc_bits)
             self.putb([11, ['%s sequence: 0x%04x' % (crc_type, self.crc),
                             '%s: 0x%04x' % (crc_type, self.crc), '%s' % crc_type]])
@@ -246,7 +253,7 @@ class Decoder(srd.Decoder):
                 self.putb([16, ['CRC is invalid']])
 
         # CRC delimiter bit (recessive)
-        elif bitnum == (self.last_databit + self.crc_len + 1):
+        elif bitnum == (self.crc_start - 1 + self.crc_len + 1):
             self.putx([12, ['CRC delimiter: %d' % can_rx,
                             'CRC d: %d' % can_rx, 'CRC d']])
             if can_rx != 1:
@@ -256,23 +263,23 @@ class Decoder(srd.Decoder):
                 self.set_nominal_bitrate()
 
         # ACK slot bit (dominant: ACK, recessive: NACK)
-        elif bitnum == (self.last_databit + self.crc_len + 2):
+        elif bitnum == (self.crc_start - 1 + self.crc_len + 2):
             ack = 'ACK' if can_rx == 0 else 'NACK'
             self.putx([13, ['ACK slot: %s' % ack, 'ACK s: %s' % ack, 'ACK s']])
 
         # ACK delimiter bit (recessive)
-        elif bitnum == (self.last_databit + self.crc_len + 3):
+        elif bitnum == (self.crc_start - 1 + self.crc_len + 3):
             self.putx([14, ['ACK delimiter: %d' % can_rx,
                             'ACK d: %d' % can_rx, 'ACK d']])
             if can_rx != 1:
                 self.putx([16, ['ACK delimiter must be a recessive bit']])
 
         # Remember start of EOF (see below).
-        elif bitnum == (self.last_databit + self.crc_len + 4):
+        elif bitnum == (self.crc_start - 1 + self.crc_len + 4):
             self.ss_block = self.samplenum
 
         # End of frame (EOF), 7 recessive bits
-        elif bitnum == (self.last_databit + self.crc_len + 10):
+        elif bitnum == (self.crc_start - 1 + self.crc_len + 3 + 7):
             self.putb([2, ['End of frame', 'EOF', 'E']])
             if self.rawbits[-7:] != [1, 1, 1, 1, 1, 1, 1]:
                 self.putb([16, ['End of frame (EOF) must be 7 recessive bits']])
