@@ -220,6 +220,15 @@ class Decoder(srd.Decoder):
         self.last_bit_was_stuff_bit = True
         return True
 
+    def is_valid_parity(self, num, given_parity_bit):
+        calculated_parity_bit = 0
+
+        while num:
+            calculated_parity_bit ^= num & 1
+            num >>= 1
+
+        return calculated_parity_bit == given_parity_bit
+
     def is_valid_crc(self, crc_bits):
         return True # TODO
 
@@ -243,7 +252,12 @@ class Decoder(srd.Decoder):
             sbc_bits = self.bits[x:x + self.last_databit + 4]
             p_gray_sbc = bitpack_msb(sbc_bits)
 
+            parity = p_gray_sbc & 1
             gray_sbc = p_gray_sbc >> 1
+
+            if not self.is_valid_parity(gray_sbc, parity):
+                self.putb([16, ['Parity is invalid']])
+
             sbc = gray2num(gray_sbc) # Number of stuff bits modulo 8
 
             self.putb([18, ['Stuff bit count: %d' % sbc,
