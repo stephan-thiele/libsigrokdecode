@@ -140,6 +140,7 @@ class Decoder(srd.Decoder):
         self.bits = [] # Only actual CAN frame bits (no stuff bits)
         self.curbit = 0 # Current bit of CAN frame (bit 0 == SOF)
         self.last_databit = 999 # Positive value that bitnum+x will never match
+        self.crc_start = 999
         self.ss_block = None
         self.ss_bit12 = None
         self.ss_bit32 = None
@@ -332,6 +333,11 @@ class Decoder(srd.Decoder):
             self.putb([10, ['Data length code: %d' % self.dlc,
                             'DLC: %d' % self.dlc, 'DLC']])
             self.last_databit = self.dlc_start + 3 + (dlc2len(self.dlc) * 8)
+            self.crc_start = self.last_databit + 1
+
+            if self.fd:
+                self.crc_start += 4 # Skip SBC field
+
             if self.dlc > 8 and not self.fd:
                 self.putb([16, ['Data length code (DLC) > 8 is not allowed']])
 
@@ -434,6 +440,10 @@ class Decoder(srd.Decoder):
             self.putb([10, ['Data length code: %d' % self.dlc,
                             'DLC: %d' % self.dlc, 'DLC']])
             self.last_databit = self.dlc_start + 3 + (dlc2len(self.dlc) * 8)
+            self.crc_start = self.last_databit + 1
+
+            if self.fd:
+                self.crc_start += 4 # Skip SBC field
 
         # Remember all databyte bits, except the very last one.
         elif bitnum in range(self.dlc_start + 4, self.last_databit):
