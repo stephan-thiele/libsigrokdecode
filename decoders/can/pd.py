@@ -27,6 +27,16 @@ class SamplerateError(Exception):
 def dlc2len(dlc):
     return [0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64][dlc]
 
+def gray2num(gray_code):
+    num = gray_code
+    mask = gray_code
+
+    while mask:
+        mask >>= 1
+        num ^= mask
+
+    return num
+
 class Decoder(srd.Decoder):
     api_version = 3
     id = 'can'
@@ -231,10 +241,13 @@ class Decoder(srd.Decoder):
             # SBC field
             x = self.last_databit + 1
             sbc_bits = self.bits[x:x + self.last_databit + 4]
-            sbc = bitpack_msb(sbc_bits)
+            p_gray_sbc = bitpack_msb(sbc_bits)
 
-            self.putb([18, ['Raw stuff bit count: %d' % sbc,
-                            'rSBC: %d' % sbc, 'SBC']])
+            gray_sbc = p_gray_sbc >> 1
+            sbc = gray2num(gray_sbc) # Number of stuff bits modulo 8
+
+            self.putb([18, ['Stuff bit count: %d' % sbc,
+                            'SBC: %d' % sbc, 'SBC']])
 
         # Remember start of FD-CRC sequence (see below).
         elif self.fd and bitnum == (self.last_databit + 4 + 1):
