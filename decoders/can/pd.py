@@ -92,6 +92,17 @@ class Decoder(srd.Decoder):
     def set_fast_bitrate(self):
         self.set_bit_rate(self.options['fast_bitrate'])
 
+    def set_dlc_and_crc_len(self, dlc):
+        self.dlc = dlc
+
+        if self.fd:
+            if dlc2len(self.dlc) < 16:
+                self.crc_len = 27 # 17 + SBC + stuff bits
+            else:
+                self.crc_len = 32 # 21 + SBC + stuff bits
+        else:
+            self.crc_len = 15
+
     def metadata(self, key, value):
         if key == srd.SRD_CONF_SAMPLERATE:
             self.samplerate = value
@@ -185,13 +196,6 @@ class Decoder(srd.Decoder):
         # Remember start of CRC sequence (see below).
         if bitnum == (self.last_databit + 1):
             self.ss_block = self.samplenum
-            if self.fd:
-                if dlc2len(self.dlc) < 16:
-                    self.crc_len = 27 # 17 + SBC + stuff bits
-                else:
-                    self.crc_len = 32 # 21 + SBC + stuff bits
-            else:
-                self.crc_len = 15
 
         # CRC sequence (15 bits, 17 bits or 21 bits)
         elif bitnum == (self.last_databit + self.crc_len):
@@ -295,7 +299,7 @@ class Decoder(srd.Decoder):
 
         # Bits 15-18: Data length code (DLC), in number of bytes (0-8).
         elif bitnum == self.dlc_start + 3:
-            self.dlc = bitpack_msb(self.bits[self.dlc_start:self.dlc_start + 4])
+            self.set_dlc_and_crc_len(bitpack_msb(self.bits[self.dlc_start:self.dlc_start + 4]))
             self.putb([10, ['Data length code: %d' % self.dlc,
                             'DLC: %d' % self.dlc, 'DLC']])
             self.last_databit = self.dlc_start + 3 + (dlc2len(self.dlc) * 8)
@@ -397,7 +401,7 @@ class Decoder(srd.Decoder):
 
         # Bits 35-38: Data length code (DLC), in number of bytes (0-8).
         elif bitnum == self.dlc_start + 3:
-            self.dlc = bitpack_msb(self.bits[self.dlc_start:self.dlc_start + 4])
+            self.set_dlc_and_crc_len(bitpack_msb(self.bits[self.dlc_start:self.dlc_start + 4]))
             self.putb([10, ['Data length code: %d' % self.dlc,
                             'DLC: %d' % self.dlc, 'DLC']])
             self.last_databit = self.dlc_start + 3 + (dlc2len(self.dlc) * 8)
