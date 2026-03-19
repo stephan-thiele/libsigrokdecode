@@ -243,7 +243,14 @@ class Decoder(srd.Decoder):
             self.last_bit_was_stuff_bit = False
             return False
 
-        if self.fd and cur_bit > self.last_databit:
+        if self.xl and cur_bit > 21: # After DL1 bit
+            # Within the CAN-XL Control field (starting from DL1 bit), data field and FCRC sequence, a fixed stuff bit
+            # is inserted after every 10th bit:
+            if (cur_bit - 20) % 10 != 0:
+                self.last_bit_was_stuff_bit = False
+                return False
+
+        elif not self.xl and self.fd and cur_bit > self.last_databit:
             # Within the CAN-FD CRC field, a fixed stuff bit is inserted after every fourth bit:
             if (cur_bit - self.last_databit - 1) % 4 != 0:
                 self.last_bit_was_stuff_bit = False
