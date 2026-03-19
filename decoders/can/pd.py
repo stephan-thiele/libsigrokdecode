@@ -75,11 +75,12 @@ class Decoder(srd.Decoder):
         ('stuff-bit', 'Stuff bit'),
         ('warning', 'Warning'),
         ('bit', 'Bit'),
-        ('sbc', 'Stuff bit count')
+        ('sbc', 'Stuff bit count'),
+        ('xlf', 'Extended data length format')
     )
     annotation_rows = (
         ('bits', 'Bits', (15, 17)),
-        ('fields', 'Fields', tuple(range(15)) + (18,)),
+        ('fields', 'Fields', tuple(range(15)) + (18, 19)),
         ('warnings', 'Warnings', (16,)),
     )
 
@@ -178,6 +179,7 @@ class Decoder(srd.Decoder):
         self.frame_bytes = []
         self.rtr_type = None
         self.fd = False
+        self.xl = False
         self.brs = False
         self.rtr = None
         self.last_bit_was_stuff_bit = False
@@ -377,7 +379,16 @@ class Decoder(srd.Decoder):
                 self.dlc_start = 15
 
         if bitnum == 15 and self.fd:
-            self.putx([7, ['Reserved: %d' % can_rx, 'R0: %d' % can_rx, 'R0']])
+            self.xl = True if can_rx else False
+
+            if self.xl:
+                self.putx([19, ['Extended data length format: %d' % can_rx,
+                                'XLF: %d' % can_rx, 'XLF']])
+            else:
+                self.putx([7, ['Reserved: %d' % can_rx, 'R0: %d' % can_rx, 'R0']])
+
+        if self.xl:
+            return # Stop decoding here, as long as CAN-XL implementation is incomplete. TODO: Remove at AH2 bit.
 
         if bitnum == 16 and self.fd:
             data = [7, ['Bit rate switch: %d' % can_rx,
