@@ -80,11 +80,14 @@ class Decoder(srd.Decoder):
         ('sbc', 'Stuff bit count'),
         ('xlf', 'Extended data length format'),
         ('resXL', 'Reserved bit extended data field length format'),
-        ('ADH', 'Arbitration to data high')
+        ('ADH', 'Arbitration to data high'),
+        ('DH1', 'Data high bit 1'),
+        ('DH2', 'Data high bit 2'),
+        ('DL1', 'Data low bit 1')
     )
     annotation_rows = (
         ('bits', 'Bits', (15, 17)),
-        ('fields', 'Fields', tuple(range(15)) + (18, 19, 20, 21)),
+        ('fields', 'Fields', tuple(range(15)) + (18, 19, 20, 21, 22, 23, 24)),
         ('warnings', 'Warnings', (16,)),
     )
 
@@ -423,6 +426,16 @@ class Decoder(srd.Decoder):
                 self.putx([21, ['Arbitration to data high: %d' % can_rx, 'ADH: %d' % can_rx, 'ADH']])
             else:
                 self.putx([7, ['Error state indicator: %d' % can_rx, 'ESI: %d' % can_rx, 'ESI']])
+
+        if self.xl:
+            if bitnum == 18:
+                self.putx([22, ['Data high bit 1: %d' % can_rx, 'DH1: %d' % can_rx, 'DH1']])
+
+            elif bitnum == 19:
+                self.putx([23, ['Data high bit 2: %d' % can_rx, 'DH2: %d' % can_rx, 'DH2']])
+
+            elif bitnum == 20:
+                self.putx([24, ['Data low bit 1: %d' % can_rx, 'DL1: %d' % can_rx, 'DL1']])
 
         if self.xl:
             return # Stop decoding here, as long as CAN-XL implementation is incomplete. TODO: Remove at AH2 bit.
