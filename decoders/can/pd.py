@@ -83,11 +83,12 @@ class Decoder(srd.Decoder):
         ('ADH', 'Arbitration to data high'),
         ('DH1', 'Data high bit 1'),
         ('DH2', 'Data high bit 2'),
-        ('DL1', 'Data low bit 1')
+        ('DL1', 'Data low bit 1'),
+        ('SDT', 'Service data unit type')
     )
     annotation_rows = (
         ('bits', 'Bits', (15, 17)),
-        ('fields', 'Fields', tuple(range(15)) + (18, 19, 20, 21, 22, 23, 24)),
+        ('fields', 'Fields', tuple(range(15)) + (18, 19, 20, 21, 22, 23, 24, 25)),
         ('warnings', 'Warnings', (16,)),
     )
 
@@ -436,6 +437,16 @@ class Decoder(srd.Decoder):
 
             elif bitnum == 20:
                 self.putx([24, ['Data low bit 1: %d' % can_rx, 'DL1: %d' % can_rx, 'DL1']])
+
+            # Remember start of SDT (see below).
+            elif bitnum == 21:
+                self.ss_block = self.samplenum
+
+            elif bitnum == 28:
+                sdt = bitpack_msb(self.bits[21:29])
+
+                self.putb([25, ['Service data unit type: %d' % sdt,
+                                'SDT: %d' % sdt, 'SDT']])
 
         if self.xl:
             return # Stop decoding here, as long as CAN-XL implementation is incomplete. TODO: Remove at AH2 bit.
