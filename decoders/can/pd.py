@@ -76,11 +76,12 @@ class Decoder(srd.Decoder):
         ('warning', 'Warning'),
         ('bit', 'Bit'),
         ('sbc', 'Stuff bit count'),
-        ('xlf', 'Extended data length format')
+        ('xlf', 'Extended data length format'),
+        ('resXL', 'Reserved bit extended data field length format')
     )
     annotation_rows = (
         ('bits', 'Bits', (15, 17)),
-        ('fields', 'Fields', tuple(range(15)) + (18, 19)),
+        ('fields', 'Fields', tuple(range(15)) + (18, 19, 20)),
         ('warnings', 'Warnings', (16,)),
     )
 
@@ -387,22 +388,26 @@ class Decoder(srd.Decoder):
             else:
                 self.putx([7, ['Reserved: %d' % can_rx, 'R0: %d' % can_rx, 'R0']])
 
+        if bitnum == 16 and self.fd:
+            if self.xl:
+                self.putx([20, ['Reserved bit extended data field length format: %d' % can_rx,
+                                'resXL: %d' % can_rx, 'resXL']])
+            else:
+                data = [7, ['Bit rate switch: %d' % can_rx,
+                            'BRS: %d' % can_rx, 'BRS']]
+
+                if self.brs:
+                    from_bitrate = self.options['nominal_bitrate']
+                    from_spp = self.options['nominal_sample_point']
+                    to_bitrate = self.options['fd_bitrate']
+                    to_spp = self.options['fd_sample_point']
+
+                    self.putx_brs(from_bitrate, from_spp, to_bitrate, to_spp, data)
+                else:
+                    self.putx(data)
+
         if self.xl:
             return # Stop decoding here, as long as CAN-XL implementation is incomplete. TODO: Remove at AH2 bit.
-
-        if bitnum == 16 and self.fd:
-            data = [7, ['Bit rate switch: %d' % can_rx,
-                        'BRS: %d' % can_rx, 'BRS']]
-
-            if self.brs:
-              from_bitrate = self.options['nominal_bitrate']
-              from_spp = self.options['nominal_sample_point']
-              to_bitrate = self.options['fd_bitrate']
-              to_spp = self.options['fd_sample_point']
-
-              self.putx_brs(from_bitrate, from_spp, to_bitrate, to_spp, data)
-            else:
-              self.putx(data)
 
         if bitnum == 17 and self.fd:
             self.putx([7, ['Error state indicator: %d' % can_rx, 'ESI: %d' % can_rx, 'ESI']])
