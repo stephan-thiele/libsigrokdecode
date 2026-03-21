@@ -386,7 +386,7 @@ class Decoder(srd.Decoder):
                             'AH2: %d' % can_rx, 'AH2']])
 
         # ACK slot bit (dominant: ACK, recessive: NACK)
-        elif bitnum == (self.crc_start - 1 + self.crc_len + 2):
+        elif self.xl and bitnum == self.crc_start + 40 or not self.xl and bitnum == (self.crc_start - 1 + self.crc_len + 2):
             ack = 'ACK' if can_rx == 0 else 'NACK'
             self.putx([13, ['ACK slot: %s' % ack, 'ACK s: %s' % ack, 'ACK s']])
 
