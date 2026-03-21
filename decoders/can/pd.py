@@ -85,11 +85,12 @@ class Decoder(srd.Decoder):
         ('DH2', 'Data high bit 2'),
         ('DL1', 'Data low bit 1'),
         ('SDT', 'Service data unit type'),
-        ('SEC', 'Simple/extended content')
+        ('SEC', 'Simple/extended content'),
+        ('PCRC-13', 'Preface CRC-13')
     )
     annotation_rows = (
         ('bits', 'Bits', (15, 17)),
-        ('fields', 'Fields', tuple(range(15)) + (18, 19, 20, 21, 22, 23, 24, 25, 26)),
+        ('fields', 'Fields', tuple(range(15)) + (18, 19, 20, 21, 22, 23, 24, 25, 26, 27)),
         ('warnings', 'Warnings', (16,)),
     )
 
@@ -515,6 +516,17 @@ class Decoder(srd.Decoder):
 
                 self.putb([18, ['Stuff bit count: %d' % sbc,
                                 'SBC: %d' % sbc, 'SBC']])
+
+            # Remember start of PCRC (see below).
+            elif bitnum == 44:
+                self.ss_block = self.samplenum
+
+            #  Preface CRC (PCRC)
+            elif bitnum == 56:
+                pcrc = bitpack_msb(self.bits[45:58])
+
+                self.putb([27, ['Preface CRC-13: 0x%04x' % pcrc,
+                                'PCRC-13: 0x%04x' % pcrc, 'PCRC-13']])
 
         if self.xl:
             return # Stop decoding here, as long as CAN-XL implementation is incomplete. TODO: Remove at AH2 bit.
