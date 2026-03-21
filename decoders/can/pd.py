@@ -134,7 +134,9 @@ class Decoder(srd.Decoder):
     def set_dlc_and_crc_len(self, dlc):
         self.dlc = dlc
 
-        if self.fd:
+        if self.xl:
+            self.crc_len = 32
+        elif self.fd:
             if dlc2len(self.dlc) < 16:
                 self.crc_len = 17
             else:
@@ -297,10 +299,10 @@ class Decoder(srd.Decoder):
     # Returns True if the frame ended (EOF), False otherwise.
     def decode_frame_end(self, can_rx, bitnum):
 
-        # Remember start of Non-FD CRC sequence or FD-SBC field (see below).
+        # Remember start of Non-FD CRC sequence, XL FCRC sequence or FD-SBC field (see below).
         if bitnum == (self.last_databit + 1):
             self.ss_block = self.samplenum
-        elif self.fd and bitnum == (self.last_databit + 4):
+        elif self.fd and not self.xl and bitnum == (self.last_databit + 4):
             # SBC field
             x = self.last_databit + 1
             sbc_bits = self.bits[x:x + self.last_databit + 4]
@@ -318,20 +320,23 @@ class Decoder(srd.Decoder):
                             'SBC: %d' % sbc, 'SBC']])
 
         # Remember start of FD-CRC sequence (see below).
-        elif self.fd and bitnum == (self.last_databit + 4 + 1):
+        elif self.fd and not self.xl and bitnum == (self.last_databit + 4 + 1):
             self.ss_block = self.samplenum
 
-        # CRC sequence (15 bits, 17 bits or 21 bits)
+        # CRC sequence (15 bits, 17 bits, 21 bits or 32 bits)
         elif bitnum == (self.crc_start - 1 + self.crc_len):
             x = self.crc_start
             crc_bits = self.bits[x:x + self.crc_len + 1]
 
-            crc_type = "CRC-%d" % self.crc_len
+            crc_type = ("F" if self.xl else "") + "CRC-%d" % self.crc_len
             self.crc = bitpack_msb(crc_bits)
             self.putb([11, ['%s sequence: 0x%04x' % (crc_type, self.crc),
                             '%s: 0x%04x' % (crc_type, self.crc), '%s' % crc_type]])
             if not self.is_valid_crc(crc_bits):
                 self.putb([16, ['CRC is invalid']])
+
+        elif self.xl:
+            return # Stop decoding here, as long as CAN-XL implementation is incomplete. TODO: Remove at AH2 bit.
 
         # CRC delimiter bit (recessive)
         elif bitnum == (self.crc_start - 1 + self.crc_len + 1):
@@ -551,9 +556,6 @@ class Decoder(srd.Decoder):
 
                 self.putb([29, ['Acceptance field: 0x%02x (%d)' % (af, af),
                                 'AF: 0x%02x (%d)' % (af, af), 'AF']])
-
-        if self.xl:
-            return # Stop decoding here, as long as CAN-XL implementation is incomplete. TODO: Remove at AH2 bit.
 
         # Remember all databyte bits, except the very last one.
         if bitnum in range(97 if self.xl else self.dlc_start + 4, self.last_databit):
