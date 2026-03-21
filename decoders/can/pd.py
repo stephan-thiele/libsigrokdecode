@@ -89,11 +89,12 @@ class Decoder(srd.Decoder):
         ('PCRC-13', 'Preface CRC-13'),
         ('VCID', 'Virtual CAN network channel identifier'),
         ('AF', 'Acceptance field'),
-        ('FCP', 'Format check pattern')
+        ('FCP', 'Format check pattern'),
+        ('DAH', 'Data arbitration high')
     )
     annotation_rows = (
         ('bits', 'Bits', (15, 17)),
-        ('fields', 'Fields', tuple(range(15)) + (18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30)),
+        ('fields', 'Fields', tuple(range(15)) + (18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31)),
         ('warnings', 'Warnings', (16,)),
     )
 
@@ -347,11 +348,8 @@ class Decoder(srd.Decoder):
             self.putb([30, ['Format check pattern: 0x%02X' % fcp,
                             'FCP: 0x%02X' % fcp, 'FCP']])
 
-        elif self.xl:
-            return # Stop decoding here, as long as CAN-XL implementation is incomplete. TODO: Remove at AH2 bit.
-
         # CRC delimiter bit (recessive)
-        elif bitnum == (self.crc_start - 1 + self.crc_len + 1):
+        elif not self.xl and bitnum == (self.crc_start + self.crc_len):
             data = [12, ['CRC delimiter: %d' % can_rx,
                          'CRC d: %d' % can_rx, 'CRC d']]
 
@@ -367,6 +365,13 @@ class Decoder(srd.Decoder):
 
             if can_rx != 1:
                 self.putx([16, ['CRC delimiter must be a recessive bit']])
+
+        elif self.xl and bitnum == self.crc_start + 36:
+            self.putx([31, ['Data arbitration high: %d' % can_rx,
+                            'DAH: %d' % can_rx, 'DAH']])
+
+        elif self.xl:
+            return # Stop decoding here, as long as CAN-XL implementation is incomplete. TODO: Remove at AH2 bit.
 
         # ACK slot bit (dominant: ACK, recessive: NACK)
         elif bitnum == (self.crc_start - 1 + self.crc_len + 2):
