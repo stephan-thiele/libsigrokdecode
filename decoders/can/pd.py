@@ -398,11 +398,11 @@ class Decoder(srd.Decoder):
                 self.putx([16, ['ACK delimiter must be a recessive bit']])
 
         # Remember start of EOF (see below).
-        elif bitnum == (self.crc_start - 1 + self.crc_len + 4):
+        elif self.xl and bitnum == self.crc_start + 42 or not self.xl and bitnum == (self.crc_start - 1 + self.crc_len + 4):
             self.ss_block = self.samplenum
 
         # End of frame (EOF), 7 recessive bits
-        elif bitnum == (self.crc_start - 1 + self.crc_len + 3 + 7):
+        elif self.xl and bitnum == self.crc_start - 1 + 42 + 7 or not self.xl and bitnum == (self.crc_start - 1 + self.crc_len + 3 + 7):
             self.putb([2, ['End of frame', 'EOF', 'E']])
             if self.rawbits[-7:] != [1, 1, 1, 1, 1, 1, 1]:
                 self.putb([16, ['End of frame (EOF) must be 7 recessive bits']])
