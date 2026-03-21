@@ -91,11 +91,12 @@ class Decoder(srd.Decoder):
         ('AF', 'Acceptance field'),
         ('FCP', 'Format check pattern'),
         ('DAH', 'Data arbitration high'),
-        ('AH1', 'Arbitration high 1')
+        ('AH1', 'Arbitration high 1'),
+        ('AL1', 'Arbitration low 1')
     )
     annotation_rows = (
         ('bits', 'Bits', (15, 17)),
-        ('fields', 'Fields', tuple(range(15)) + (18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32)),
+        ('fields', 'Fields', tuple(range(15)) + (18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33)),
         ('warnings', 'Warnings', (16,)),
     )
 
@@ -374,6 +375,10 @@ class Decoder(srd.Decoder):
         elif self.xl and bitnum == self.crc_start + 37:
             self.putx([32, ['Arbitration high 1: %d' % can_rx,
                             'AH1: %d' % can_rx, 'AH1']])
+
+        elif self.xl and bitnum == self.crc_start + 38:
+            self.putx([33, ['Arbitration low 1: %d' % can_rx,
+                            'AL1: %d' % can_rx, 'AL1']])
 
         elif self.xl:
             return # Stop decoding here, as long as CAN-XL implementation is incomplete. TODO: Remove at AH2 bit.
