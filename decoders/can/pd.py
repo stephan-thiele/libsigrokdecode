@@ -411,6 +411,7 @@ class Decoder(srd.Decoder):
                 self.putx([19, ['Extended data length format: %d' % can_rx,
                                 'XLF: %d' % can_rx, 'XLF']])
                 self.dlc_start = 30
+                self.dlc_field_len = 11
             else:
                 self.putx([7, ['Reserved: %d' % can_rx, 'R0: %d' % can_rx, 'R0']])
 
@@ -462,37 +463,46 @@ class Decoder(srd.Decoder):
                 self.putx([26, ['Simple/extended content: %d' % can_rx,
                                 'SEC: %d' % can_rx, 'SEC']])
 
-        if self.xl:
-            return # Stop decoding here, as long as CAN-XL implementation is incomplete. TODO: Remove at AH2 bit.
-
         # Remember start of DLC (see below).
-        elif bitnum == self.dlc_start:
+        if bitnum == self.dlc_start:
             self.ss_block = self.samplenum
 
-        # Bits 15-18: Data length code (DLC), in number of bytes (0-8).
+        # Data length code (DLC)
+        # - Classic CAN: number of bytes (0-8)
+        # - CAN-FD: 0=0, 1=1, 2=2, 3=3, 4=4, 5=5, 6=6, 7=7, 8=8, 9=12, 10=16, 11=20, 12=24, 13=32, 14=48, 15=64
+        # - CAN-XL: Number of bytes minus one (0 - 2047) while 0 means 1 byte of data (0 bytes is not possible anymore)
+
         elif bitnum == self.dlc_start + self.dlc_field_len - 1:
             self.set_dlc_and_crc_len(bitpack_msb(self.bits[self.dlc_start:self.dlc_start + self.dlc_field_len]))
             self.putb([10, ['Data length code: %d' % self.dlc,
                             'DLC: %d' % self.dlc, 'DLC']])
-            self.last_databit = self.dlc_start + self.dlc_field_len - 1 + (dlc2len(self.dlc) * 8)
+
+            if self.xl:
+                self.last_databit = 96 + (self.dlc + 1) * 8
+            else:
+              self.last_databit = self.dlc_start + self.dlc_field_len - 1 + (dlc2len(self.dlc) * 8)
+
             self.crc_start = self.last_databit + 1
 
-            if self.fd:
+            if self.fd and not self.xl:
                 self.crc_start += 4 # Skip SBC field
 
             if self.dlc > 8 and not self.fd:
                 self.putb([16, ['Data length code (DLC) > 8 is not allowed']])
 
+        if self.xl:
+            return # Stop decoding here, as long as CAN-XL implementation is incomplete. TODO: Remove at AH2 bit.
+
         # Remember all databyte bits, except the very last one.
-        elif bitnum in range(self.dlc_start + 4, self.last_databit):
+        if bitnum in range(97 if self.xl else self.dlc_start + 4, self.last_databit):
             self.ss_databytebits.append(self.samplenum)
 
-        # Bits 19-X: Data field (0-8 bytes, depending on DLC)
+        # Data field (0-2048 bytes, depending on DLC)
         # The bits within a data byte are transferred MSB-first.
         elif bitnum == self.last_databit:
             self.ss_databytebits.append(self.samplenum) # Last databyte bit.
-            for i in range(dlc2len(self.dlc)):
-                x = self.dlc_start + 4 + (8 * i)
+            for i in range(self.dlc + 1 if self.xl else dlc2len(self.dlc)):
+                x = (97 if self.xl else self.dlc_start + 4) + (8 * i)
                 b = bitpack_msb(self.bits[x:x + 8])
                 self.frame_bytes.append(b)
                 ss = self.ss_databytebits[i * 8]
