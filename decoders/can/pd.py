@@ -86,11 +86,12 @@ class Decoder(srd.Decoder):
         ('DL1', 'Data low bit 1'),
         ('SDT', 'Service data unit type'),
         ('SEC', 'Simple/extended content'),
-        ('PCRC-13', 'Preface CRC-13')
+        ('PCRC-13', 'Preface CRC-13'),
+        ('VCID', 'Virtual CAN network channel identifier')
     )
     annotation_rows = (
         ('bits', 'Bits', (15, 17)),
-        ('fields', 'Fields', tuple(range(15)) + (18, 19, 20, 21, 22, 23, 24, 25, 26, 27)),
+        ('fields', 'Fields', tuple(range(15)) + (18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28)),
         ('warnings', 'Warnings', (16,)),
     )
 
@@ -527,6 +528,17 @@ class Decoder(srd.Decoder):
 
                 self.putb([27, ['Preface CRC-13: 0x%04x' % pcrc,
                                 'PCRC-13: 0x%04x' % pcrc, 'PCRC-13']])
+
+            # Remember start of VCID (see below).
+            elif bitnum == 57:
+                self.ss_block = self.samplenum
+
+            # Virtual CAN network channel identifier (VCID)
+            elif bitnum == 64:
+                vcid = bitpack_msb(self.bits[58:65])
+
+                self.putb([28, ['Virtual CAN network channel identifier: 0x%02X (%d)' % (vcid, vcid),
+                                'VCID: 0x%02X (%d)' % (vcid, vcid), 'VCID']])
 
         if self.xl:
             return # Stop decoding here, as long as CAN-XL implementation is incomplete. TODO: Remove at AH2 bit.
