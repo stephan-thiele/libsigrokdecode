@@ -202,6 +202,7 @@ class Decoder(srd.Decoder):
         self.rtr = None
         self.last_bit_was_stuff_bit = False
         self.crc_len = 15
+        self.dlc_field_len = 4
 
     # Poor man's clock synchronization. Use signal edges which change to
     # dominant state in rather simple ways. This naive approach is neither
@@ -469,11 +470,11 @@ class Decoder(srd.Decoder):
             self.ss_block = self.samplenum
 
         # Bits 15-18: Data length code (DLC), in number of bytes (0-8).
-        elif bitnum == self.dlc_start + 3:
-            self.set_dlc_and_crc_len(bitpack_msb(self.bits[self.dlc_start:self.dlc_start + 4]))
+        elif bitnum == self.dlc_start + self.dlc_field_len - 1:
+            self.set_dlc_and_crc_len(bitpack_msb(self.bits[self.dlc_start:self.dlc_start + self.dlc_field_len]))
             self.putb([10, ['Data length code: %d' % self.dlc,
                             'DLC: %d' % self.dlc, 'DLC']])
-            self.last_databit = self.dlc_start + 3 + (dlc2len(self.dlc) * 8)
+            self.last_databit = self.dlc_start + self.dlc_field_len - 1 + (dlc2len(self.dlc) * 8)
             self.crc_start = self.last_databit + 1
 
             if self.fd:
