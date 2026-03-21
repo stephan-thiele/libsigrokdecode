@@ -277,6 +277,9 @@ class Decoder(srd.Decoder):
 
         return calculated_parity_bit == given_parity_bit
 
+    def is_valid_odd_parity(self, num, given_parity_bit):
+        return not self.is_valid_even_parity(num, given_parity_bit)
+
     def is_valid_crc(self, crc_bits):
         return True # TODO
 
