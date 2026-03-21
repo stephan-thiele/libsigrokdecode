@@ -268,7 +268,7 @@ class Decoder(srd.Decoder):
         self.last_bit_was_stuff_bit = True
         return True
 
-    def is_valid_parity(self, num, given_parity_bit):
+    def is_valid_even_parity(self, num, given_parity_bit):
         calculated_parity_bit = 0
 
         while num:
@@ -303,7 +303,7 @@ class Decoder(srd.Decoder):
             parity = p_gray_sbc & 1
             gray_sbc = p_gray_sbc >> 1
 
-            if not self.is_valid_parity(gray_sbc, parity):
+            if not self.is_valid_even_parity(gray_sbc, parity):
                 self.putb([16, ['Parity is invalid']])
 
             sbc = gray2num(gray_sbc) # Number of stuff bits modulo 8
