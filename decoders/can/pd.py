@@ -409,6 +409,7 @@ class Decoder(srd.Decoder):
             if self.xl:
                 self.putx([19, ['Extended data length format: %d' % can_rx,
                                 'XLF: %d' % can_rx, 'XLF']])
+                self.dlc_start = 30
             else:
                 self.putx([7, ['Reserved: %d' % can_rx, 'R0: %d' % can_rx, 'R0']])
 
