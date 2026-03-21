@@ -391,7 +391,7 @@ class Decoder(srd.Decoder):
             self.putx([13, ['ACK slot: %s' % ack, 'ACK s: %s' % ack, 'ACK s']])
 
         # ACK delimiter bit (recessive)
-        elif bitnum == (self.crc_start - 1 + self.crc_len + 3):
+        elif self.xl and bitnum == self.crc_start + 41 or not self.xl and bitnum == (self.crc_start - 1 + self.crc_len + 3):
             self.putx([14, ['ACK delimiter: %d' % can_rx,
                             'ACK d: %d' % can_rx, 'ACK d']])
             if can_rx != 1:
