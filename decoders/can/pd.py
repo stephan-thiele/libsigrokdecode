@@ -494,6 +494,29 @@ class Decoder(srd.Decoder):
                 self.putb([16, ['Data length code (DLC) > 8 is not allowed']])
 
         if self.xl:
+            # Remember start of SBC (see below).
+            if bitnum == 41:
+                self.ss_block = self.samplenum
+
+            # Stuff bit count (SBC)
+            elif bitnum == 43:
+                # SBC field
+                sbc_bits = self.bits[41:44]
+                p_gray_sbc = bitpack_msb(sbc_bits)
+
+                parity = p_gray_sbc & 1
+                gray_sbc = p_gray_sbc >> 1
+
+                # in contrast to FD CRC, odd parity scheme is used:
+                if not self.is_valid_odd_parity(gray_sbc, parity):
+                    self.putb([16, ['Parity is invalid']])
+
+                sbc = gray2num(gray_sbc) # Number of stuff bits modulo 8
+
+                self.putb([18, ['Stuff bit count: %d' % sbc,
+                                'SBC: %d' % sbc, 'SBC']])
+
+        if self.xl:
             return # Stop decoding here, as long as CAN-XL implementation is incomplete. TODO: Remove at AH2 bit.
 
         # Remember all databyte bits, except the very last one.
