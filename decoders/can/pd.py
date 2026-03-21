@@ -53,6 +53,7 @@ class Decoder(srd.Decoder):
     options = (
         {'id': 'nominal_bitrate', 'desc': 'Nominal bitrate (bits/s)', 'default': 1000000},
         {'id': 'fd_bitrate', 'desc': 'FD bitrate (bits/s)', 'default': 2000000},
+        {'id': 'xl_bitrate', 'desc': 'XL bitrate (bits/s)', 'default': 4000000},
         {'id': 'nominal_sample_point', 'desc': 'Nominal sample point (%)', 'default': 70.0},
         {'id': 'fd_sample_point', 'desc': 'FD sample point (%)', 'default': 70.0},
     )
@@ -111,6 +112,9 @@ class Decoder(srd.Decoder):
 
     def set_fd_bitrate(self):
         self.set_bit_rate(self.options['fd_bitrate'], self.options['fd_sample_point'])
+
+    def set_xl_bitrate(self):
+        self.set_bit_rate(self.options['xl_bitrate'], self.options['nominal_sample_point'])
 
     def set_dlc_and_crc_len(self, dlc):
         self.dlc = dlc
