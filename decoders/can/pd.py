@@ -56,6 +56,7 @@ class Decoder(srd.Decoder):
         {'id': 'xl_bitrate', 'desc': 'XL bitrate (bits/s)', 'default': 4000000},
         {'id': 'nominal_sample_point', 'desc': 'Nominal sample point (%)', 'default': 70.0},
         {'id': 'fd_sample_point', 'desc': 'FD sample point (%)', 'default': 70.0},
+        {'id': 'xl_sample_point', 'desc': 'XL sample point (%)', 'default': 70.0},
     )
     annotations = (
         ('data', 'Payload data'),
@@ -114,7 +115,7 @@ class Decoder(srd.Decoder):
         self.set_bit_rate(self.options['fd_bitrate'], self.options['fd_sample_point'])
 
     def set_xl_bitrate(self):
-        self.set_bit_rate(self.options['xl_bitrate'], self.options['nominal_sample_point'])
+        self.set_bit_rate(self.options['xl_bitrate'], self.options['xl_sample_point'])
 
     def set_dlc_and_crc_len(self, dlc):
         self.dlc = dlc
