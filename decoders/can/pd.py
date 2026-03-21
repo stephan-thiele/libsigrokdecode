@@ -88,11 +88,12 @@ class Decoder(srd.Decoder):
         ('SEC', 'Simple/extended content'),
         ('PCRC-13', 'Preface CRC-13'),
         ('VCID', 'Virtual CAN network channel identifier'),
-        ('AF', 'Acceptance field')
+        ('AF', 'Acceptance field'),
+        ('FCP', 'Format check pattern')
     )
     annotation_rows = (
         ('bits', 'Bits', (15, 17)),
-        ('fields', 'Fields', tuple(range(15)) + (18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29)),
+        ('fields', 'Fields', tuple(range(15)) + (18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30)),
         ('warnings', 'Warnings', (16,)),
     )
 
@@ -334,6 +335,17 @@ class Decoder(srd.Decoder):
                             '%s: 0x%04x' % (crc_type, self.crc), '%s' % crc_type]])
             if not self.is_valid_crc(crc_bits):
                 self.putb([16, ['CRC is invalid']])
+
+        elif self.xl and bitnum == self.crc_start + 32:
+            # Remember start of FCP sequence (see below).
+            self.ss_block = self.samplenum
+
+        elif self.xl and bitnum == self.crc_start + 35:
+            x = self.crc_start + 32
+            fcp = bitpack_msb(self.bits[x:x + self.crc_start + 36])
+
+            self.putb([30, ['Format check pattern: 0x%02X' % fcp,
+                            'FCP: 0x%02X' % fcp, 'FCP']])
 
         elif self.xl:
             return # Stop decoding here, as long as CAN-XL implementation is incomplete. TODO: Remove at AH2 bit.
