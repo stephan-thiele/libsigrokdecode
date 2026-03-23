@@ -98,6 +98,11 @@ class Decoder(srd.Decoder):
         self.bit_width = float(self.samplerate) / float(bitrate)
         self.sample_point = (self.bit_width / 100.0) * sample_point
 
+        if self.fd:
+            # Set virtual dom edge after the bit where bitrate switch happened, to adjust sample grid to new bitrate
+            self.dom_edge_bcount = self.curbit + 1
+            self.dom_edge_snum = self.samplenum + self.bit_width - self.sample_point
+
     def set_nominal_bitrate(self):
         self.set_bit_rate(self.options['nominal_bitrate'], self.options['nominal_sample_point'])
 
@@ -593,8 +598,7 @@ class Decoder(srd.Decoder):
                             self.brs = True if can_rx else False
 
                             if self.brs:
-                              self.dom_edge_seen(force=True)
-                              self.set_fd_bitrate()
+                                self.set_fd_bitrate()
 
                         # FD-CRC delimiter
                         elif self.brs and bitnum == (self.crc_start + self.crc_len):
