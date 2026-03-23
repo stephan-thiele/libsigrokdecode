@@ -94,15 +94,15 @@ class Decoder(srd.Decoder):
         self.out_ann = self.register(srd.OUTPUT_ANN)
         self.out_python = self.register(srd.OUTPUT_PYTHON)
 
-    def set_bit_rate(self, bitrate):
+    def set_bit_rate(self, bitrate, sample_point):
         self.bit_width = float(self.samplerate) / float(bitrate)
-        self.sample_point = (self.bit_width / 100.0) * self.options['nominal_sample_point']
+        self.sample_point = (self.bit_width / 100.0) * sample_point
 
     def set_nominal_bitrate(self):
-        self.set_bit_rate(self.options['nominal_bitrate'])
+        self.set_bit_rate(self.options['nominal_bitrate'], self.options['nominal_sample_point'])
 
     def set_fd_bitrate(self):
-        self.set_bit_rate(self.options['fd_bitrate'])
+        self.set_bit_rate(self.options['fd_bitrate'], self.options['fd_sample_point'])
 
     def set_dlc_and_crc_len(self, dlc):
         self.dlc = dlc
