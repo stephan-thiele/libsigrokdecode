@@ -160,6 +160,7 @@ class Decoder(srd.Decoder):
         self.frame_bytes = []
         self.rtr_type = None
         self.fd = False
+        self.brs = False
         self.rtr = None
         self.last_bit_was_stuff_bit = False
         self.crc_len = 15
@@ -507,12 +508,6 @@ class Decoder(srd.Decoder):
         self.rawbits.append(can_rx)
         self.bits.append(can_rx)
 
-        if self.fd and can_rx:
-            if bitnum == 16 and self.frame_type == 'standard' \
-                    or bitnum == 35 and self.frame_type == 'extended':
-                self.dom_edge_seen(force=True)
-                self.set_fd_bitrate()
-
         # If this is a stuff bit, remove it from self.bits and ignore it.
         if self.is_stuff_bit():
             self.putx([15, [str(can_rx)]])
@@ -590,7 +585,18 @@ class Decoder(srd.Decoder):
                 # Wait until we're in the correct bit/sampling position.
                 pos = self.get_sample_point(self.curbit)
                 (can_rx,) = self.wait([{'skip': pos - self.samplenum}, {0: 'f'}])
+
                 if self.matched[1]:
                     self.dom_edge_seen()
                 if self.matched[0]:
+                    if self.fd:
+                        # FD-BRS bit:
+                        if can_rx and (bitnum == 16 and self.frame_type == 'standard'
+                                    or bitnum == 35 and self.frame_type == 'extended'):
+                            self.brs = True if can_rx else False
+
+                            if self.brs:
+                              self.dom_edge_seen(force=True)
+                              self.set_fd_bitrate()
+
                     self.handle_bit(bitnum, can_rx)
