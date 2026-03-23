@@ -503,12 +503,9 @@ class Decoder(srd.Decoder):
 
         return False
 
-    def handle_bit(self, can_rx):
+    def handle_bit(self, bitnum, can_rx):
         self.rawbits.append(can_rx)
         self.bits.append(can_rx)
-
-        # Get the index of the current CAN frame bit (without stuff bits).
-        bitnum = len(self.bits) - 1
 
         if self.fd and can_rx:
             if bitnum == 16 and self.frame_type == 'standard' \
@@ -588,10 +585,12 @@ class Decoder(srd.Decoder):
                 self.dom_edge_seen(force = True)
                 self.state = 'GET BITS'
             elif self.state == 'GET BITS':
+                bitnum = len(self.bits) # Get the index of the current CAN frame bit (without stuff bits).
+
                 # Wait until we're in the correct bit/sampling position.
                 pos = self.get_sample_point(self.curbit)
                 (can_rx,) = self.wait([{'skip': pos - self.samplenum}, {0: 'f'}])
                 if self.matched[1]:
                     self.dom_edge_seen()
                 if self.matched[0]:
-                    self.handle_bit(can_rx)
+                    self.handle_bit(bitnum, can_rx)
