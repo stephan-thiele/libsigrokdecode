@@ -301,8 +301,19 @@ class Decoder(srd.Decoder):
 
         # CRC delimiter bit (recessive)
         elif bitnum == (self.crc_start - 1 + self.crc_len + 1):
-            self.putx([12, ['CRC delimiter: %d' % can_rx,
-                            'CRC d: %d' % can_rx, 'CRC d']])
+            data = [12, ['CRC delimiter: %d' % can_rx,
+                         'CRC d: %d' % can_rx, 'CRC d']]
+
+            if self.fd and self.brs:
+                from_bitrate = self.options['fd_bitrate']
+                from_spp = self.options['fd_sample_point']
+                to_bitrate = self.options['nominal_bitrate']
+                to_spp = self.options['nominal_sample_point']
+
+                self.putx_brs(from_bitrate, from_spp, to_bitrate, to_spp, data)
+            else:
+                self.putx(data)
+
             if can_rx != 1:
                 self.putx([16, ['CRC delimiter must be a recessive bit']])
 
@@ -369,7 +380,18 @@ class Decoder(srd.Decoder):
             self.putx([7, ['Reserved: %d' % can_rx, 'R0: %d' % can_rx, 'R0']])
 
         if bitnum == 16 and self.fd:
-            self.putx([7, ['Bit rate switch: %d' % can_rx, 'BRS: %d' % can_rx, 'BRS']])
+            data = [7, ['Bit rate switch: %d' % can_rx,
+                        'BRS: %d' % can_rx, 'BRS']]
+
+            if self.brs:
+              from_bitrate = self.options['nominal_bitrate']
+              from_spp = self.options['nominal_sample_point']
+              to_bitrate = self.options['fd_bitrate']
+              to_spp = self.options['fd_sample_point']
+
+              self.putx_brs(from_bitrate, from_spp, to_bitrate, to_spp, data)
+            else:
+              self.putx(data)
 
         if bitnum == 17 and self.fd:
             self.putx([7, ['Error state indicator: %d' % can_rx, 'ESI: %d' % can_rx, 'ESI']])
@@ -474,8 +496,18 @@ class Decoder(srd.Decoder):
                            'RB0: %d' % can_rx, 'RB0']])
 
         elif bitnum == 35 and self.fd:
-            self.putx([7, ['Bit rate switch: %d' % can_rx,
-                           'BRS: %d' % can_rx, 'BRS']])
+            data = [7, ['Bit rate switch: %d' % can_rx,
+                        'BRS: %d' % can_rx, 'BRS']]
+
+            if self.brs:
+                from_bitrate = self.options['nominal_bitrate']
+                from_spp = self.options['nominal_sample_point']
+                to_bitrate = self.options['fd_bitrate']
+                to_spp = self.options['fd_sample_point']
+
+                self.putx_brs(from_bitrate, from_spp, to_bitrate, to_spp, data)
+            else:
+                self.putx(data)
 
         elif bitnum == 36 and self.fd:
             self.putx([7, ['Error state indicator: %d' % can_rx,
@@ -529,7 +561,23 @@ class Decoder(srd.Decoder):
             self.curbit += 1 # Increase self.curbit (bitnum is not affected).
             return
         else:
-            self.putx([17, [str(can_rx)]])
+            if self.fd and can_rx and (bitnum == 16 and self.frame_type == 'standard'
+                                    or bitnum == 35 and self.frame_type == 'extended'):
+                from_bitrate = self.options['nominal_bitrate']
+                from_spp = self.options['nominal_sample_point']
+                to_bitrate = self.options['fd_bitrate']
+                to_spp = self.options['fd_sample_point']
+
+                self.putx_brs(from_bitrate, from_spp, to_bitrate, to_spp, [17, [str(can_rx)]])
+            elif self.fd and self.brs and bitnum == (self.crc_start + self.crc_len):
+                from_bitrate = self.options['fd_bitrate']
+                from_spp = self.options['fd_sample_point']
+                to_bitrate = self.options['nominal_bitrate']
+                to_spp = self.options['nominal_sample_point']
+
+                self.putx_brs(from_bitrate, from_spp, to_bitrate, to_spp, [17, [str(can_rx)]])
+            else:
+                self.putx([17, [str(can_rx)]])
 
         # Bit 0: Start of frame (SOF) bit
         if bitnum == 0:
