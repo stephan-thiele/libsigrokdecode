@@ -53,7 +53,7 @@ class Decoder(srd.Decoder):
     options = (
         {'id': 'nominal_bitrate', 'desc': 'Nominal bitrate (bits/s)', 'default': 1000000},
         {'id': 'fd_bitrate', 'desc': 'FD bitrate (bits/s)', 'default': 2000000},
-        {'id': 'sample_point', 'desc': 'Sample point (%)', 'default': 70.0},
+        {'id': 'nominal_sample_point', 'desc': 'Nominal sample point (%)', 'default': 70.0},
     )
     annotations = (
         ('data', 'Payload data'),
@@ -95,7 +95,7 @@ class Decoder(srd.Decoder):
 
     def set_bit_rate(self, bitrate):
         self.bit_width = float(self.samplerate) / float(bitrate)
-        self.sample_point = (self.bit_width / 100.0) * self.options['sample_point']
+        self.sample_point = (self.bit_width / 100.0) * self.options['nominal_sample_point']
 
     def set_nominal_bitrate(self):
         self.set_bit_rate(self.options['nominal_bitrate'])
@@ -118,7 +118,7 @@ class Decoder(srd.Decoder):
         if key == srd.SRD_CONF_SAMPLERATE:
             self.samplerate = value
             self.bit_width = float(self.samplerate) / float(self.options['nominal_bitrate'])
-            self.sample_point = (self.bit_width / 100.0) * self.options['sample_point']
+            self.sample_point = (self.bit_width / 100.0) * self.options['nominal_sample_point']
 
     # Generic helper for CAN bit annotations.
     def putg(self, ss, es, data):
