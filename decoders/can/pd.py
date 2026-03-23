@@ -52,7 +52,7 @@ class Decoder(srd.Decoder):
     )
     options = (
         {'id': 'nominal_bitrate', 'desc': 'Nominal bitrate (bits/s)', 'default': 1000000},
-        {'id': 'fast_bitrate', 'desc': 'Fast bitrate (bits/s)', 'default': 2000000},
+        {'id': 'fd_bitrate', 'desc': 'FD bitrate (bits/s)', 'default': 2000000},
         {'id': 'sample_point', 'desc': 'Sample point (%)', 'default': 70.0},
     )
     annotations = (
@@ -100,8 +100,8 @@ class Decoder(srd.Decoder):
     def set_nominal_bitrate(self):
         self.set_bit_rate(self.options['nominal_bitrate'])
 
-    def set_fast_bitrate(self):
-        self.set_bit_rate(self.options['fast_bitrate'])
+    def set_fd_bitrate(self):
+        self.set_bit_rate(self.options['fd_bitrate'])
 
     def set_dlc_and_crc_len(self, dlc):
         self.dlc = dlc
@@ -513,7 +513,7 @@ class Decoder(srd.Decoder):
             if bitnum == 16 and self.frame_type == 'standard' \
                     or bitnum == 35 and self.frame_type == 'extended':
                 self.dom_edge_seen(force=True)
-                self.set_fast_bitrate()
+                self.set_fd_bitrate()
 
         # If this is a stuff bit, remove it from self.bits and ignore it.
         if self.is_stuff_bit():
