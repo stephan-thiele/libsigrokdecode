@@ -131,6 +131,19 @@ class Decoder(srd.Decoder):
         left, right = int(self.sample_point), int(self.bit_width - self.sample_point)
         self.put(ss - left, es + right, self.out_ann, data)
 
+    # Single-CAN-bit annotation for a bitrate switch bit using the current samplenum.
+    def putx_brs(self, from_bitrate, from_spp, to_bitrate, to_spp, data):
+        from_samples_per_bit = float(self.samplerate) / float(from_bitrate)
+        from_spp_sample_no = (from_samples_per_bit / 100.0) * from_spp
+
+        to_samples_per_bit = float(self.samplerate) / float(to_bitrate)
+        to_spp_sample_no = (to_samples_per_bit / 100.0) * to_spp
+
+        num_samples_brs_bit = from_spp_sample_no + to_samples_per_bit - to_spp_sample_no
+
+        left, right = int(from_spp_sample_no), int(num_samples_brs_bit - from_spp_sample_no)
+        self.put(self.samplenum - left, self.samplenum + right, self.out_ann, data)
+
     # Single-CAN-bit annotation using the current samplenum.
     def putx(self, data):
         self.putg(self.samplenum, self.samplenum, data)
