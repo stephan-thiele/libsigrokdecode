@@ -54,6 +54,7 @@ class Decoder(srd.Decoder):
         {'id': 'nominal_bitrate', 'desc': 'Nominal bitrate (bits/s)', 'default': 1000000},
         {'id': 'fd_bitrate', 'desc': 'FD bitrate (bits/s)', 'default': 2000000},
         {'id': 'nominal_sample_point', 'desc': 'Nominal sample point (%)', 'default': 70.0},
+        {'id': 'fd_sample_point', 'desc': 'FD sample point (%)', 'default': 70.0},
     )
     annotations = (
         ('data', 'Payload data'),
