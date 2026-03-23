@@ -288,9 +288,6 @@ class Decoder(srd.Decoder):
             if can_rx != 1:
                 self.putx([16, ['CRC delimiter must be a recessive bit']])
 
-            if self.fd:
-                self.set_nominal_bitrate()
-
         # ACK slot bit (dominant: ACK, recessive: NACK)
         elif bitnum == (self.crc_start - 1 + self.crc_len + 2):
             ack = 'ACK' if can_rx == 0 else 'NACK'
@@ -598,5 +595,9 @@ class Decoder(srd.Decoder):
                             if self.brs:
                               self.dom_edge_seen(force=True)
                               self.set_fd_bitrate()
+
+                        # FD-CRC delimiter
+                        elif self.brs and bitnum == (self.crc_start + self.crc_len):
+                            self.set_nominal_bitrate()
 
                     self.handle_bit(bitnum, can_rx)
